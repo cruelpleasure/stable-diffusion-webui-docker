@@ -2,3 +2,9 @@
 /.devcontainer
 embeddings/*
 /docker-compose.override.yml
+*.pth
+*.ckpt
+cache/models/LDSR.yaml
+cache/transformers/models--openai--clip-vit-large-patch14/snapshots/e117ec5bd6435ea24faaf21b5c9ab3bafb7f6625/pytorch_model.bin
+cache/transformers/models--openai--clip-vit-large-patch14/snapshots/e45c02554b24d4c70b955be461d78a18e91d579c/pytorch_model.bin
+cache/transformers/models--openai--clip-vit-large-patch14/blobs/f1a17cdbe0f36fec524f5cafb1c261ea3bbbc13e346e0f74fc9eb0460dedd0d3
