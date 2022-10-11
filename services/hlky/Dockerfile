@@ -16,16 +16,13 @@ RUN <<EOF
 git config --global http.postBuffer 1048576000
 git clone https://github.com/sd-webui/stable-diffusion-webui.git stable-diffusion
 cd stable-diffusion
-git reset --hard 7623a5734740025d79b710f3744bff9276e1467b
+git reset --hard 1a9c053cb7b6832695771db2555c0adc9b41e95f
 conda env update --file environment.yaml -n base
 conda clean -a -y
 EOF
 
 
-# Note: don't update the sha of previous versions because the install will take forever
-# instead, update the repo state in a later step
-# ARG BRANCH=master  SHA=d0bb60a139d60e6c2b9be4e18e0e29a86aa5af59
-ARG BRANCH=dev SHA=1e7bdfe3f38a6dd37fc230f440ea1b0db0937240
+ARG BRANCH=dev  SHA=fe6e72fde79214aa848d47afe74487d9855b8643
 RUN <<EOF
 cd stable-diffusion
 git fetch
@@ -35,8 +32,6 @@ conda env update --file environment.yaml -n base
 conda clean -a -y
 EOF
 
-RUN pip install -U --no-cache-dir pyperclip
-
 # add info
 COPY . /docker/
 RUN python /docker/info.py /stable-diffusion/frontend/frontend.py && chmod +x /docker/mount.sh
@@ -44,7 +39,7 @@ RUN python /docker/info.py /stable-diffusion/frontend/frontend.py && chmod +x /d
 WORKDIR /stable-diffusion
 ENV PYTHONPATH="${PYTHONPATH}:${PWD}" CLI_ARGS=""
 EXPOSE 7860
-# run, -u to not buffer stdout / stderr
+
 CMD /docker/mount.sh && \
   python3 -u scripts/webui.py --outdir /output --ckpt /data/StableDiffusion/model.ckpt ${CLI_ARGS}
 # sed -i -- 's/8501/7860/g' .streamlit/config.toml && STREAMLIT_SERVER_HEADLESS=true python -u -m streamlit run scripts/webui_streamlit.py  --theme.base dark
