@@ -29,17 +29,14 @@ services:
     build: ./services/hlky/
     environment:
       - CLI_ARGS=--optimized-turbo
+      - USE_STREAMLIT=0
 
   auto: &automatic
     <<: *base_service
     profiles: ["auto"]
     build: ./services/AUTOMATIC1111
-    volumes:
-      - *v1
-      - *v2
-      - ./services/AUTOMATIC1111/config.json:/stable-diffusion-webui/config.json
     environment:
-      - CLI_ARGS=--allow-code --medvram
+      - CLI_ARGS=--allow-code --medvram --xformers
 
   auto-cpu:
     <<: *automatic
@@ -53,5 +50,5 @@ services:
     profiles: ["lstein"]
     build: ./services/lstein/
     environment:
-      - PRELOAD=false
+      - PRELOAD=true
       - CLI_ARGS=
