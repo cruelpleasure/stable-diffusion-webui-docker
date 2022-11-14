@@ -4,23 +4,25 @@ FROM alpine/git:2.36.2 as download
 
 SHELL ["/bin/sh", "-ceuxo", "pipefail"]
 
-RUN git clone https://github.com/CompVis/stable-diffusion.git repositories/stable-diffusion && cd repositories/stable-diffusion && git reset --hard 69ae4b35e0a0f6ee1af8bb9a5d0016ccb27e36dc
-
-RUN git clone https://github.com/sczhou/CodeFormer.git repositories/CodeFormer && cd repositories/CodeFormer && git reset --hard c5b4593074ba6214284d6acd5f1719b6c5d739af
-RUN git clone https://github.com/salesforce/BLIP.git repositories/BLIP && cd repositories/BLIP && git reset --hard 48211a1594f1321b00f14c9f7a5b4813144b2fb9
-
 RUN <<EOF
-# because taming-transformers is huge
-git config --global http.postBuffer 1048576000
-git clone https://github.com/CompVis/taming-transformers.git repositories/taming-transformers
-cd repositories/taming-transformers
-git reset --hard 24268930bf1dce879235a7fddd0b2355b84d7ea6
-rm -rf data assets
+cat <<'EOE' > /clone.sh
+mkdir -p repositories/"$1" && cd repositories/"$1" && git init && git remote add origin "$2" && git fetch origin "$3" --depth=1 && git reset --hard "$3" && rm -rf .git
+EOE
 EOF
 
-RUN git clone https://github.com/crowsonkb/k-diffusion.git repositories/k-diffusion && cd repositories/k-diffusion && git reset --hard f4e99857772fc3a126ba886aadf795a332774878
+RUN . /clone.sh taming-transformers https://github.com/CompVis/taming-transformers.git 24268930bf1dce879235a7fddd0b2355b84d7ea6 \
+  && rm -rf data assets **/*.ipynb
 
-RUN git clone https://github.com/pharmapsychotic/clip-interrogator repositories/clip-interrogator && cd repositories/clip-interrogator && git reset --hard 2486589f24165c8e3b303f84e9dbbea318df83e8
+RUN . /clone.sh stable-diffusion https://github.com/CompVis/stable-diffusion.git 69ae4b35e0a0f6ee1af8bb9a5d0016ccb27e36dc \
+  && rm -rf assets data/**/*.png data/**/*.jpg data/**/*.gif
+
+RUN . /clone.sh CodeFormer https://github.com/sczhou/CodeFormer.git c5b4593074ba6214284d6acd5f1719b6c5d739af \
+  && rm -rf assets inputs
+
+RUN . /clone.sh BLIP https://github.com/salesforce/BLIP.git 48211a1594f1321b00f14c9f7a5b4813144b2fb9
+RUN . /clone.sh k-diffusion https://github.com/crowsonkb/k-diffusion.git 60e5042ca0da89c14d1dd59d73883280f8fce991
+RUN . /clone.sh clip-interrogator https://github.com/pharmapsychotic/clip-interrogator 2486589f24165c8e3b303f84e9dbbea318df83e8
+
 
 FROM alpine:3 as xformers
 RUN apk add aria2
@@ -32,58 +34,63 @@ SHELL ["/bin/bash", "-ceuxo", "pipefail"]
 
 ENV DEBIAN_FRONTEND=noninteractive PIP_PREFER_BINARY=1 PIP_NO_CACHE_DIR=1
 
-RUN pip install torch==1.12.1+cu113 torchvision==0.13.1+cu113 --extra-index-url https://download.pytorch.org/whl/cu113
+RUN pip install torch==1.12.1+cu116 torchvision==0.13.1+cu116 --extra-index-url https://download.pytorch.org/whl/cu116
 
-RUN apt-get update && apt install fonts-dejavu-core rsync git -y && apt-get clean
+RUN apt-get update && apt install fonts-dejavu-core rsync git jq moreutils -y && apt-get clean
 
 
 RUN <<EOF
 git clone https://github.com/AUTOMATIC1111/stable-diffusion-webui.git
 cd stable-diffusion-webui
-git reset --hard 1eb588cbf19924333b88beaa1ac0041904966640
+git reset --hard 98947d173e3f1667eba29c904f681047dea9de90
 pip install -r requirements_versions.txt
 EOF
 
-ENV ROOT=/stable-diffusion-webui \
-  WORKDIR=/stable-diffusion-webui/repositories/stable-diffusion
+
+COPY --from=xformers /wheel.whl xformers-0.0.14.dev0-cp310-cp310-linux_x86_64.whl
+RUN pip install xformers-0.0.14.dev0-cp310-cp310-linux_x86_64.whl && rm xformers-0.0.14.dev0-cp310-cp310-linux_x86_64.whl
+
+
+ENV ROOT=/stable-diffusion-webui
 
 
 COPY --from=download /git/ ${ROOT}
 RUN mkdir ${ROOT}/interrogate && cp ${ROOT}/repositories/clip-interrogator/data/* ${ROOT}/interrogate
-RUN pip install --prefer-binary --no-cache-dir -r ${ROOT}/repositories/CodeFormer/requirements.txt
-
-# TODO: move to top
-RUN apt-get install jq moreutils -y
+RUN pip install -r ${ROOT}/repositories/CodeFormer/requirements.txt
 
 
-# Note: don't update the sha of previous versions because the install will take forever
-# instead, update the repo state in a later step
-
-ARG SHA=f49c08ea566385db339c6628f65c3a121033f67c
-RUN <<EOF
-cd stable-diffusion-webui
-git pull --rebase
-git reset --hard ${SHA}
-pip install -r requirements_versions.txt
-EOF
+ARG DEEPDANBOORU="0"
+RUN [[ "${DEEPDANBOORU:-0}" == "0" ]] && : || pip install tensorflow-cpu==2.10 tensorflow-io==0.27.0 git+https://github.com/KichangKim/DeepDanbooru.git@edf73df4cdaeea2cf00e9ac08bd8a9026b7a7b26#egg=deepdanbooru
 
 RUN pip install opencv-python-headless \
   git+https://github.com/TencentARC/GFPGAN.git@8d2447a2d918f8eba5a4a01463fd48e45126a379 \
   git+https://github.com/openai/CLIP.git@d50d76daa670286dd6cacf3bcd80b5e4823fc8e1 \
   pyngrok
 
-COPY --from=xformers /wheel.whl xformers-0.0.14.dev0-cp310-cp310-linux_x86_64.whl
-RUN pip install xformers-0.0.14.dev0-cp310-cp310-linux_x86_64.whl
+# Note: don't update the sha of previous versions because the install will take forever
+# instead, update the repo state in a later step
+
+ARG SHA=98947d173e3f1667eba29c904f681047dea9de90
+RUN <<EOF
+cd stable-diffusion-webui
+git fetch
+git reset --hard ${SHA}
+pip install -r requirements_versions.txt
+EOF
+
+RUN pip install opencv-python-headless
 
 COPY . /docker
 
 RUN <<EOF
-chmod +x /docker/mount.sh && python3 /docker/info.py ${ROOT}/modules/ui.py
+python3 /docker/info.py ${ROOT}/modules/ui.py
+mv  ${ROOT}/style.css ${ROOT}/user.css
+sed -i 's/os.rename(tmpdir, target_dir)/shutil.move(tmpdir,target_dir)/' ${ROOT}/modules/ui_extensions.py
 EOF
 
+WORKDIR ${ROOT}/repositories/stable-diffusion
 ENV CLI_ARGS=""
-WORKDIR ${WORKDIR}
 EXPOSE 7860
+ENTRYPOINT ["/docker/entrypoint.sh"]
 # run, -u to not buffer stdout / stderr
-CMD /docker/mount.sh && \
-  python3 -u ../../webui.py --listen --port 7860 --ckpt-dir ${ROOT}/models/Stable-diffusion --theme dark ${CLI_ARGS}
+CMD python3 -u ../../webui.py --listen --port 7860 --ckpt-dir ${ROOT}/models/Stable-diffusion ${CLI_ARGS}

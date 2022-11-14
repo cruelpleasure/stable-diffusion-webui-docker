@@ -2,18 +2,17 @@
 
 set -Eeuo pipefail
 
-mkdir -p /data/.cache /data/StableDiffusion /data/Codeformer /data/GFPGAN /data/ESRGAN /data/BSRGAN /data/RealESRGAN /data/SwinIR /data/LDSR /data/ScuNET /data/embeddings
+# TODO: maybe just use the .gitignore file to create all of these
+mkdir -vp /data/.cache /data/StableDiffusion /data/Codeformer /data/GFPGAN /data/ESRGAN /data/BSRGAN /data/RealESRGAN /data/SwinIR /data/LDSR /data/ScuNET /data/embeddings /data/VAE /data/Deepdanbooru
 
 echo "Downloading, this might take a while..."
 
-aria2c --input-file /docker/links.txt --dir /data --continue
+aria2c --disable-ipv6 --input-file /docker/links.txt --dir /data --continue
 
 echo "Checking SHAs..."
 
 parallel --will-cite -a /docker/checksums.sha256 "echo -n {} | sha256sum -c"
 
-# aria2c already does hash check
-# cc6cb27103417325ff94f52b7a5d2dde45a7515b25c255d8e396c90014281516  /data/StableDiffusion/v1-5-pruned-emaonly.ckpt
 cat <<EOF
 By using this software, you agree to the following licenses:
 https://github.com/CompVis/stable-diffusion/blob/main/LICENSE

@@ -7,12 +7,13 @@ declare -A MOUNTS
 # cache
 MOUNTS["/root/.cache"]=/data/.cache
 # ui specific
-MOUNTS["${PWD}/models/ldm/stable-diffusion-v1/model.ckpt"]=/data/StableDiffusion/model.ckpt
 MOUNTS["${PWD}/src/gfpgan/experiments/pretrained_models/GFPGANv1.4.pth"]=/data/GFPGAN/GFPGANv1.4.pth
 MOUNTS["${PWD}/ldm/invoke/restoration/codeformer/weights"]=/data/Codeformer
+MOUNTS["${PWD}/configs/models.yaml"]=/docker/models.yaml
 # hacks
 MOUNTS["/opt/conda/lib/python3.9/site-packages/facexlib/weights"]=/data/.cache
 MOUNTS["/opt/conda/lib/python3.9/site-packages/realesrgan/weights"]=/data/RealESRGAN
+MOUNTS["${PWD}/src/realesrgan/weights"]=/data/RealESRGAN
 MOUNTS["${PWD}/gfpgan/weights"]=/data/.cache
 
 for to_path in "${!MOUNTS[@]}"; do
@@ -25,5 +26,7 @@ for to_path in "${!MOUNTS[@]}"; do
 done
 
 if "${PRELOAD}" == "true"; then
-  python3 -u scripts/preload_models.py
+  python3 -u scripts/preload_models.py --no-interactive
 fi
+
+exec "$@"
