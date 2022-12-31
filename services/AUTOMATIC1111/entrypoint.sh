@@ -30,7 +30,9 @@ MOUNTS["${ROOT}/models/SwinIR"]="/data/SwinIR"
 MOUNTS["${ROOT}/models/ScuNET"]="/data/ScuNET"
 MOUNTS["${ROOT}/models/LDSR"]="/data/LDSR"
 MOUNTS["${ROOT}/models/hypernetworks"]="/data/Hypernetworks"
-MOUNTS["${ROOT}/models/deepbooru"]="/data/Deepdanbooru"
+MOUNTS["${ROOT}/models/torch_deepdanbooru"]="/data/Deepdanbooru"
+MOUNTS["${ROOT}/models/BLIP"]="/data/BLIP"
+MOUNTS["${ROOT}/models/midas"]="/data/MiDaS"
 
 MOUNTS["${ROOT}/embeddings"]="/data/embeddings"
 MOUNTS["${ROOT}/config.json"]="/data/config/auto/config.json"
@@ -51,8 +53,6 @@ for to_path in "${!MOUNTS[@]}"; do
   ln -sT "${from_path}" "${to_path}"
   echo Mounted $(basename "${from_path}")
 done
-
-mkdir -p /output/saved /output/txt2img-images/ /output/img2img-images /output/extras-images/ /output/grids/ /output/txt2img-grids/ /output/img2img-grids/
 
 if [ -f "/data/config/auto/startup.sh" ]; then
   pushd ${ROOT}
